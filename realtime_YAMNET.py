@@ -62,20 +62,7 @@ with st.sidebar:
         format="%f dB"
     )
     
-    # Calibration button and state
-    if 'is_calibrating' not in st.session_state:
-        st.session_state.is_calibrating = False
-    if 'calibration_offset' not in st.session_state:
-        st.session_state.calibration_offset = 0.0
-        
-    if st.button("Calibrate Gain"):
-        st.session_state.is_calibrating = True
-        st.session_state.calibration_samples = []
-        # Add popup message
-        st.info("🎤 Speak or perform your action normally to automatically fine-tune gain adjustment (5 seconds)")
-    
-    # Add containers for calibration and dB meter
-    calibration_status = st.empty()
+    # Add container for dB meter only
     db_meter = st.empty()
     
     # Pause/Resume button
@@ -270,38 +257,13 @@ def update_system_stats():
         gpu_metric.markdown("GPU stats unavailable")
 
 def process_audio_frame(frame_data: np.ndarray) -> Tuple[np.ndarray, Optional[float]]:
-    """Process audio frame with gain and calibration."""
-    # Apply calibration offset if exists
-    if hasattr(st.session_state, 'calibration_offset'):
-        frame_data = frame_data * (10 ** (st.session_state.calibration_offset / 20))
-    
+    """Process audio frame with gain."""
     # Apply input gain
     frame_data = frame_data * (10 ** (st.session_state.input_gain / 20))
     
     # Calculate current dB level
     rms = np.sqrt(np.mean(frame_data**2))
     db_level = 20 * np.log10(rms) if rms > 0 else -120
-    
-    # Handle calibration if active
-    if st.session_state.is_calibrating:
-        peak_value = np.max(np.abs(frame_data))
-        st.session_state.calibration_samples.append(peak_value)
-        
-        # After collecting 50 samples (about 5 seconds), calculate calibration
-        progress = len(st.session_state.calibration_samples) / 50
-        calibration_status.progress(progress, f"Calibrating: {int(progress * 100)}%")
-        
-        if len(st.session_state.calibration_samples) >= 50:
-            max_peak = max(st.session_state.calibration_samples)
-            if max_peak > 0:
-                target_db = -6
-                current_db = 20 * np.log10(max_peak)
-                suggested_gain = target_db - current_db
-                st.session_state.input_gain = min(32.0, max(0.0, suggested_gain))
-            
-            st.session_state.is_calibrating = False
-            st.session_state.calibration_samples = []
-            calibration_status.success("✅ Calibration complete! Input gain adjusted automatically.")
     
     return frame_data, db_level
 
@@ -335,15 +297,10 @@ try:
                 data = stream.read(frame_len, exception_on_overflow=False)
                 frame_data = librosa.util.buf_to_float(data, n_bytes=2, dtype=np.int16)
                 
-                # Process audio with gain and calibration
+                # Process audio with gain
                 frame_data, db_level = process_audio_frame(frame_data)
                 
-                # Show calibration progress if active
-                if st.session_state.is_calibrating:
-                    progress = len(st.session_state.calibration_samples) / 50  # 5 seconds worth of samples
-                    st.sidebar.progress(progress, f"Calibrating: {int(progress * 100)}%")
-
-                # Update dB meter (whether calibrating or not)
+                # Update dB meter
                 if 'db_level' in locals():
                     # Create a visual meter with color coding
                     db_color = "#2ecc71" if db_level > -60 else "#3498db"  # Green for higher levels, blue for lower
