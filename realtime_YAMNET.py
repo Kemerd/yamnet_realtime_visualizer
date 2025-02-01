@@ -11,7 +11,8 @@ import os
 from datetime import datetime
 import psutil
 import GPUtil
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
+import noisereduction_algo as nr
 
 # Initialize Streamlit page configuration
 st.set_page_config(
@@ -32,6 +33,8 @@ if 'history_timestamps' not in st.session_state:
     st.session_state.history_timestamps = deque(maxlen=11)  # 10 seconds + current
 if 'is_running' not in st.session_state:
     st.session_state.is_running = True
+if 'noise_reduction_enabled' not in st.session_state:
+    st.session_state.noise_reduction_enabled = False
 
 # Add system monitoring and audio controls in sidebar
 with st.sidebar:
@@ -47,6 +50,13 @@ with st.sidebar:
     
     # Audio Controls Section
     st.subheader("Audio Controls")
+    
+    # Add noise reduction toggle
+    st.session_state.noise_reduction_enabled = st.toggle(
+        "Enable Noise Reduction",
+        value=st.session_state.noise_reduction_enabled,
+        help="Toggle noise reduction processing on/off"
+    )
     
     # Initialize gain in session state if not exists
     if 'input_gain' not in st.session_state:
@@ -257,8 +267,22 @@ def update_system_stats():
         gpu_metric.markdown("GPU stats unavailable")
 
 def process_audio_frame(frame_data: np.ndarray) -> Tuple[np.ndarray, Optional[float]]:
-    """Process audio frame with gain."""
-    # Apply input gain
+    """
+    Process audio frame with gain and optional noise reduction.
+    
+    Args:
+        frame_data: Raw audio frame data
+    Returns:
+        Tuple of (processed_data, db_level)
+    """
+    # Apply noise reduction if enabled
+    if st.session_state.noise_reduction_enabled:
+        try:
+            frame_data = nr.reduce_noise(frame_data)
+        except Exception as e:
+            st.warning(f"Noise reduction failed, using original audio: {e}")
+    
+    # Apply input gain after noise reduction
     frame_data = frame_data * (10 ** (st.session_state.input_gain / 20))
     
     # Calculate current dB level
@@ -287,6 +311,9 @@ try:
         st.error("Failed to initialize audio stream")
         st.stop()
 
+    # Initialize noise reducer
+    noise_reducer = None  # Will be lazily initialized on first use
+
     while True:
         # Update system stats
         update_system_stats()
@@ -297,8 +324,11 @@ try:
                 data = stream.read(frame_len, exception_on_overflow=False)
                 frame_data = librosa.util.buf_to_float(data, n_bytes=2, dtype=np.int16)
                 
-                # Process audio with gain
+                # Process audio with noise reduction and gain
                 frame_data, db_level = process_audio_frame(frame_data)
+                
+                # Ensure audio is in the correct range for YAMNet (-1 to 1)
+                frame_data = np.clip(frame_data, -1, 1)
                 
                 # Update dB meter
                 if 'db_level' in locals():
