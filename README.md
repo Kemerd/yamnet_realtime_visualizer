@@ -80,6 +80,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet) by Google Research
 - [AudioSet](https://research.google.com/audioset/) project
 - [realtime_YAMNET](https://github.com/SangwonSUH/realtime_YAMNET) original fork
+- [DTLN](https://github.com/breizhn/DTLN) for noise reduction
 
 ## Contributing 🤝
 

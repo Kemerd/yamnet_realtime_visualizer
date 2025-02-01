@@ -11,6 +11,8 @@ import tensorflow as tf
 import queue
 import time
 
+_noise_reducer = None
+
 class DTLNNoiseReducer:
     """
     Real-time noise reduction using DTLN TensorFlow Lite models
@@ -194,3 +196,56 @@ class DTLNNoiseReducer:
                     print(f"\nDevice {i}:")
                     for key, value in dev.items():
                         print(f"  {key}: {value}") 
+
+def reduce_noise(frame_data: np.ndarray) -> np.ndarray:
+    """
+    Wrapper function to apply noise reduction to a single frame of audio.
+    
+    Args:
+        frame_data: numpy array of audio samples
+        
+    Returns:
+        Enhanced audio frame
+    """
+    global _noise_reducer
+    
+    try:
+        # Lazy initialization of noise reducer
+        if _noise_reducer is None:
+            _noise_reducer = DTLNNoiseReducer()
+        
+        # Process audio in chunks of block_shift size
+        block_shift = _noise_reducer.block_shift
+        num_complete_blocks = len(frame_data) // block_shift
+        
+        if num_complete_blocks == 0:
+            return frame_data
+            
+        # Initialize output buffer
+        enhanced_data = np.zeros(num_complete_blocks * block_shift, dtype=frame_data.dtype)
+        
+        # Process each complete block
+        for i in range(num_complete_blocks):
+            start_idx = i * block_shift
+            end_idx = start_idx + block_shift
+            
+            chunk = frame_data[start_idx:end_idx]
+            out_chunk = np.zeros_like(chunk)
+            
+            # Process the chunk
+            _noise_reducer.process_stream(
+                np.expand_dims(chunk, axis=1),
+                np.expand_dims(out_chunk, axis=1),
+                len(chunk),
+                0,
+                None
+            )
+            
+            # Add processed chunk to output buffer
+            enhanced_data[start_idx:end_idx] = out_chunk
+        
+        return enhanced_data
+        
+    except Exception as e:
+        print(f"Error in noise reduction: {str(e)}")
+        return frame_data  # Return original audio if processing fails 
