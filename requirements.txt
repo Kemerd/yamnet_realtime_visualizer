@@ -1,0 +1,10 @@
+tensorflow>=2.10.0
+numpy>=1.19.2
+pyaudio>=0.2.11
+sounddevice>=0.4.1
+scipy>=1.6.0
+librosa>=0.8.0
+resampy>=0.2.2
+matplotlib>=3.3.3
+tqdm>=4.54.1
+pandas>=1.2.0 

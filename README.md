@@ -15,6 +15,8 @@ This application performs real-time sound event detection using Google's YAMNet 
 - 📊 Display of top 5 detected sound events with confidence scores
 - 🎵 Support for 521 different audio event classes
 - ⚡ Low-latency processing (1-second intervals)
+- 🔇 Noise reduction capabilities using DTLN
+- 🎚️ Adjustable input gain control
 
 ## Prerequisites 🛠️
 
@@ -31,17 +33,37 @@ git clone https://github.com/yourusername/realtime_YAMNET.git
 cd realtime_YAMNET
 ```
 
-2. Download the pre-trained YAMNet model:
+2. Create and activate a virtual environment (recommended):
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows use: venv\Scripts\activate
+```
+
+3. Install required packages:
+```bash
+pip install -r requirements.txt
+```
+
+Or install packages manually:
+```bash
+pip install tensorflow>=2.4.0
+pip install numpy>=1.19.2
+pip install pyaudio>=0.2.11
+pip install sounddevice>=0.4.1
+pip install scipy>=1.6.0
+pip install librosa>=0.8.0
+pip install resampy>=0.2.2
+pip install matplotlib>=3.3.3
+pip install tqdm>=4.54.1
+pip install pandas>=1.2.0
+```
+
+4. Download the pre-trained YAMNet model:
 ```bash
 # Download manually from Google Storage
 wget https://storage.googleapis.com/audioset/yamnet.h5
 # Place the downloaded file in the yamnet folder
 mv yamnet.h5 yamnet/
-```
-
-3. Install dependencies:
-```bash
-pip install tensorflow numpy pyaudio
 ```
 
 ## Usage 🚀
@@ -51,16 +73,22 @@ Run the application with:
 python realtime_YAMNET.py
 ```
 
-The system will immediately begin capturing audio from your default microphone and display real-time detection results.
+Optional command-line arguments:
+```bash
+python realtime_YAMNET.py --noise_reduction True --input_gain 1.5
+```
 
+The system will immediately begin capturing audio from your default microphone and display real-time detection results.
 
 ## How It Works 🔍
 
 1. The system captures audio input through your device's microphone using PyAudio
 2. Audio is processed in 1-second segments
-3. YAMNet analyzes the audio segment and produces probability scores for 521 different sound events
-4. The top 5 most probable sound events are displayed in real-time
-5. The process continues until the application is terminated
+3. Optional noise reduction is applied using DTLN
+4. Input gain adjustment is applied if specified
+5. YAMNet analyzes the audio segment and produces probability scores for 521 different sound events
+6. The top 5 most probable sound events are displayed in real-time
+7. The process continues until the application is terminated
 
 ## Supported Sound Events 🔉
 
@@ -71,6 +99,19 @@ YAMNet can detect 521 different audio events from the [AudioSet ontology](https:
 - 🚗 Vehicle sounds
 - 🌳 Environmental sounds
 - And many more...
+
+## Troubleshooting 🔧
+
+Common issues and solutions:
+
+1. **PyAudio installation fails**:
+   - On Ubuntu/Debian: `sudo apt-get install python3-pyaudio`
+   - On Windows: `pip install pipwin && pipwin install pyaudio`
+   - On macOS: `brew install portaudio && pip install pyaudio`
+
+2. **CUDA/GPU issues**:
+   - Ensure CUDA toolkit and cuDNN are properly installed
+   - Check TensorFlow GPU support with `tf.test.is_built_with_cuda()`
 
 ## License 📄
 
@@ -86,3 +127,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Contributing 🤝
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
