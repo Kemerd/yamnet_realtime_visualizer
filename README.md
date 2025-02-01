@@ -2,6 +2,8 @@
 
 A real-time Sound Event Detection (SED) system powered by [YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet), utilizing your device's microphone for continuous audio analysis.
 
+![Screenshot of the application in action](./Screenshot.png)
+
 ## Overview 🎯
 
 This application performs real-time sound event detection using Google's YAMNet deep neural network model, which can identify 521 different audio events. The system processes audio input every second and displays the top 5 most probable sound events it detects.
@@ -51,7 +53,6 @@ python realtime_YAMNET.py
 
 The system will immediately begin capturing audio from your default microphone and display real-time detection results.
 
-![Screenshot of the application in action](./Screenshot.png)
 
 ## How It Works 🔍
 
