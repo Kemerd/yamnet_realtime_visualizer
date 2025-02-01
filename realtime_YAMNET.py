@@ -71,6 +71,12 @@ with st.sidebar:
     if st.button("Calibrate Gain"):
         st.session_state.is_calibrating = True
         st.session_state.calibration_samples = []
+        # Add popup message
+        st.info("🎤 Speak or perform your action normally to automatically fine-tune gain adjustment (5 seconds)")
+    
+    # Add containers for calibration and dB meter
+    calibration_status = st.empty()
+    db_meter = st.empty()
     
     # Pause/Resume button
     if st.button("Pause/Resume"):
@@ -272,25 +278,46 @@ def process_audio_frame(frame_data: np.ndarray) -> Tuple[np.ndarray, Optional[fl
     # Apply input gain
     frame_data = frame_data * (10 ** (st.session_state.input_gain / 20))
     
+    # Calculate current dB level
+    rms = np.sqrt(np.mean(frame_data**2))
+    db_level = 20 * np.log10(rms) if rms > 0 else -120
+    
     # Handle calibration if active
-    peak_value = None
     if st.session_state.is_calibrating:
         peak_value = np.max(np.abs(frame_data))
         st.session_state.calibration_samples.append(peak_value)
         
-        # After collecting 30 samples (about 3 seconds), calculate calibration
-        if len(st.session_state.calibration_samples) >= 30:
+        # After collecting 50 samples (about 5 seconds), calculate calibration
+        progress = len(st.session_state.calibration_samples) / 50
+        calibration_status.progress(progress, f"Calibrating: {int(progress * 100)}%")
+        
+        if len(st.session_state.calibration_samples) >= 50:
             max_peak = max(st.session_state.calibration_samples)
             if max_peak > 0:
-                # Calculate offset to bring peak to -1dB
-                target_db = -1
+                target_db = -6
                 current_db = 20 * np.log10(max_peak)
-                st.session_state.calibration_offset = target_db - current_db
+                suggested_gain = target_db - current_db
+                st.session_state.input_gain = min(32.0, max(0.0, suggested_gain))
             
             st.session_state.is_calibrating = False
             st.session_state.calibration_samples = []
+            calibration_status.success("✅ Calibration complete! Input gain adjusted automatically.")
     
-    return frame_data, peak_value
+    return frame_data, db_level
+
+def update_predictions_display(predictions, yamnet_classes):
+    latest_prediction = predictions[-1]
+    top5_i = np.argsort(latest_prediction)[::-1][:5]
+    
+    # Create markdown text instead of HTML
+    pred_text = "### Current Top Predictions:\n\n"
+    
+    for i in top5_i:
+        confidence = latest_prediction[i]
+        # Use markdown table-like formatting
+        pred_text += f"{yamnet_classes[i]}: {confidence:.3f}\n\n"
+    
+    return pred_text
 
 try:
     stream = get_audio_stream()
@@ -309,13 +336,31 @@ try:
                 frame_data = librosa.util.buf_to_float(data, n_bytes=2, dtype=np.int16)
                 
                 # Process audio with gain and calibration
-                frame_data, peak_value = process_audio_frame(frame_data)
+                frame_data, db_level = process_audio_frame(frame_data)
                 
                 # Show calibration progress if active
                 if st.session_state.is_calibrating:
-                    st.sidebar.progress(len(st.session_state.calibration_samples) / 30)
-                    if peak_value is not None:
-                        st.sidebar.metric("Current Peak", f"{20 * np.log10(peak_value):.1f} dB")
+                    progress = len(st.session_state.calibration_samples) / 50  # 5 seconds worth of samples
+                    st.sidebar.progress(progress, f"Calibrating: {int(progress * 100)}%")
+
+                # Update dB meter (whether calibrating or not)
+                if 'db_level' in locals():
+                    # Create a visual meter with color coding
+                    db_color = "#2ecc71" if db_level > -60 else "#3498db"  # Green for higher levels, blue for lower
+                    meter_html = f"""
+                        <div style="padding: 10px; background: rgba(52,152,219,0.1); border-radius: 5px;">
+                            <h5 style="margin: 0;">Input Level</h5>
+                            <div style="font-size: 24px; font-weight: bold; color: {db_color};">
+                                {db_level:.1f} dB
+                            </div>
+                            <div style="width: 100%; height: 10px; background: #eee; border-radius: 5px; margin-top: 5px;">
+                                <div style="width: {min(100, max(0, (db_level + 60) * 1.67))}%; height: 100%; 
+                                     background: {db_color}; border-radius: 5px; transition: width 0.1s;">
+                                </div>
+                            </div>
+                        </div>
+                    """
+                    db_meter.markdown(meter_html, unsafe_allow_html=True)
 
                 # Prepare input tensor and run prediction
                 input_tensor = tf.convert_to_tensor(np.reshape(frame_data, [1, -1]), dtype=tf.float32)
@@ -364,30 +409,9 @@ try:
 
             # Handle predictions display with conditional updates
             if st.session_state.history_predictions:
-                latest_prediction = st.session_state.history_predictions[-1]
-                top5_i = np.argsort(latest_prediction)[::-1][:5]
-                
-                # Build styled prediction text
-                pred_html = """
-                <div style="padding: 15px; background: rgba(255,255,255,0.1); border-radius: 10px;">
-                    <h4 style="margin: 0 0 10px 0; color: #2ecc71;">Current Top Predictions:</h4>
-                """
-                for i in top5_i:
-                    pred_html += f"""
-                    <div style="display: flex; justify-content: space-between; margin: 5px 0;">
-                        <span>{yamnet_classes[i]}</span>
-                        <span style="font-weight: 500; color: #3498db;">{latest_prediction[i]:.3f}</span>
-                    </div>
-                    """
-                pred_html += "</div>"
-
-                # Only update the text content when running to prevent flicker
-                if st.session_state.is_running:
-                    current_preds.markdown(pred_html, unsafe_allow_html=True)
-                else:
-                    # When paused, only update if there's no existing content
-                    if not current_preds._html:
-                        current_preds.markdown(pred_html, unsafe_allow_html=True)
+                current_preds.markdown(
+                    update_predictions_display(st.session_state.history_predictions, yamnet_classes)
+                )
 
         # Small delay to prevent overwhelming the system
         time.sleep(0.1)
