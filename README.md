@@ -6,7 +6,7 @@ A real-time Sound Event Detection (SED) system powered by [YAMNet](https://githu
 
 ## Overview 🎯
 
-This application performs real-time sound event detection using Google's YAMNet deep neural network model, which can identify 521 different audio events. The system processes audio input every second and displays the top 5 most probable sound events it detects.
+This application performs real-time sound event detection using Google's YAMNet deep neural network model, which can identify 521 different audio events. The system processes audio input every second and displays the top 5 most probable sound events it detects through an interactive Streamlit interface.
 
 ## Features ✨
 
@@ -17,6 +17,8 @@ This application performs real-time sound event detection using Google's YAMNet 
 - ⚡ Low-latency processing (1-second intervals)
 - 🔇 Noise reduction capabilities using DTLN
 - 🎚️ Adjustable input gain control
+- 📈 Interactive visualizations with Streamlit
+- 📊 Real-time spectrograms and prediction graphs
 
 ## Prerequisites 🛠️
 
@@ -68,17 +70,24 @@ mv yamnet.h5 yamnet/
 
 ## Usage 🚀
 
-Run the application with:
+Launch the Streamlit application with:
 ```bash
-python realtime_YAMNET.py
+streamlit run realtime_YAMNET.py
 ```
 
-Optional command-line arguments:
+Or
+
 ```bash
-python realtime_YAMNET.py --noise_reduction True --input_gain 1.5
+python -m streamlit run realtime_YAMNET.py
 ```
 
-The system will immediately begin capturing audio from your default microphone and display real-time detection results.
+The application will open in your default web browser with:
+- Real-time spectrogram visualization
+- Audio input device selection
+- Noise reduction toggle
+- Input gain control slider
+- System resource monitoring
+- Live prediction confidence scores
 
 ## How It Works 🔍
 
@@ -87,8 +96,8 @@ The system will immediately begin capturing audio from your default microphone a
 3. Optional noise reduction is applied using DTLN
 4. Input gain adjustment is applied if specified
 5. YAMNet analyzes the audio segment and produces probability scores for 521 different sound events
-6. The top 5 most probable sound events are displayed in real-time
-7. The process continues until the application is terminated
+6. Results are displayed in real-time through the Streamlit interface
+7. Interactive graphs update continuously to show detection history
 
 ## Supported Sound Events 🔉
 
@@ -113,6 +122,11 @@ Common issues and solutions:
    - Ensure CUDA toolkit and cuDNN are properly installed
    - Check TensorFlow GPU support with `tf.test.is_built_with_cuda()`
 
+3. **Streamlit interface not loading**:
+   - Check if Streamlit is properly installed: `pip install streamlit`
+   - Verify you're using the correct command to run the application
+   - Try clearing your browser cache
+
 ## License 📄
 
 This project is licensed under the MIT License - see the LICENSE file for details.
@@ -123,6 +137,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [AudioSet](https://research.google.com/audioset/) project
 - [realtime_YAMNET](https://github.com/SangwonSUH/realtime_YAMNET) original fork
 - [DTLN](https://github.com/breizhn/DTLN) for noise reduction
+- [Streamlit](https://streamlit.io/) for the interactive interface
 
 ## Contributing 🤝
 
