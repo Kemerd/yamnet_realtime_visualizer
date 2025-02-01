@@ -34,24 +34,55 @@ if 'history_timestamps' not in st.session_state:
 if 'is_running' not in st.session_state:
     st.session_state.is_running = True
 if 'noise_reduction_enabled' not in st.session_state:
-    st.session_state.noise_reduction_enabled = False
+    st.session_state.noise_reduction_enabled = True  # Changed to True by default
+if 'selected_input_device' not in st.session_state:
+    st.session_state.selected_input_device = None
 
 # Add system monitoring and audio controls in sidebar
 with st.sidebar:
     st.title("Controls")
     
-    # System Monitoring Section
-    st.subheader("System Statistics")
+    # Playback Controls Section
+    st.subheader("Playback Controls")
     
-    # Create containers for updating stats
-    cpu_metric = st.empty()
-    memory_metric = st.empty()
-    gpu_metric = st.empty()
+    # Pause/Resume button
+    if st.button("Pause/Resume"):
+        st.session_state.is_running = not st.session_state.is_running
     
-    # Audio Controls Section
-    st.subheader("Audio Controls")
+    status_text = "🟢 Running" if st.session_state.is_running else "🔴 Paused"
+    st.write(f"Status: {status_text}")
     
-    # Add noise reduction toggle
+    # Audio Input Section
+    st.subheader("Audio Input")
+    
+    # Get list of input devices
+    p = pyaudio.PyAudio()
+    input_devices = []
+    for i in range(p.get_device_count()):
+        device_info = p.get_device_info_by_index(i)
+        if device_info['maxInputChannels'] > 0:  # Only show devices with input capability
+            input_devices.append({
+                'index': i,
+                'name': device_info['name'],
+                'channels': device_info['maxInputChannels'],
+                'sample_rate': int(device_info['defaultSampleRate'])
+            })
+    
+    # Device selector
+    device_options = {f"{d['name']} ({d['channels']} ch, {d['sample_rate']} Hz)": d['index'] 
+                     for d in input_devices}
+    selected_device = st.selectbox(
+        "Input Device",
+        options=list(device_options.keys()),
+        index=0,
+        help="Select audio input device"
+    )
+    st.session_state.selected_input_device = device_options[selected_device]
+    
+    # Audio Processing Controls
+    st.subheader("Audio Processing")
+    
+    # Noise reduction toggle
     st.session_state.noise_reduction_enabled = st.toggle(
         "Enable Noise Reduction",
         value=st.session_state.noise_reduction_enabled,
@@ -60,7 +91,7 @@ with st.sidebar:
     
     # Initialize gain in session state if not exists
     if 'input_gain' not in st.session_state:
-        st.session_state.input_gain = 0.0
+        st.session_state.input_gain = 8.0  # Changed to 8.0 dB
     
     # Gain slider
     st.session_state.input_gain = st.slider(
@@ -72,15 +103,14 @@ with st.sidebar:
         format="%f dB"
     )
     
-    # Add container for dB meter only
+    # Add container for dB meter
     db_meter = st.empty()
     
-    # Pause/Resume button
-    if st.button("Pause/Resume"):
-        st.session_state.is_running = not st.session_state.is_running
-    
-    status_text = "🟢 Running" if st.session_state.is_running else "🔴 Paused"
-    st.write(f"Status: {status_text}")
+    # System Monitoring Section (moved to bottom)
+    st.subheader("System Statistics")
+    cpu_metric = st.empty()
+    memory_metric = st.empty()
+    gpu_metric = st.empty()
 
 # Enable GPU memory growth
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -139,6 +169,7 @@ def get_audio_stream():
                 channels=1,
                 rate=params.SAMPLE_RATE,
                 input=True,
+                input_device_index=st.session_state.selected_input_device,  # Use selected device
                 frames_per_buffer=frame_len
             )
         except Exception as e:
