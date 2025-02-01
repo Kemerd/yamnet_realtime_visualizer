@@ -1,6 +1,6 @@
 # Realtime YAMNET Sound Event Detection 🎤 🔊
 
-A real-time Sound Event Detection (SED) system powered by [YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet), utilizing your device's microphone for continuous audio analysis.
+A real-time Sound Event Detection (SED) system powered by [YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet), utilizing your device's microphone for continuous audio analysis, with support for noise reduction.
 
 ![Screenshot of the application in action](./Screenshot.png)
 
